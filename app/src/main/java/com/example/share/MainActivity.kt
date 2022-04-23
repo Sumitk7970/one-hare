@@ -1,81 +1,86 @@
 package com.example.share
 
-import android.content.ContentValues.TAG
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
-import android.util.Log
+import android.os.FileUtils
 import android.webkit.MimeTypeMap
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.share.adapters.FilesAdapter
+import androidx.core.content.FileProvider
 import com.example.share.databinding.ActivityMainBinding
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private lateinit var file: File
+    private lateinit var selectedFileName: String
+    private lateinit var selectedFileExtension: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(R.layout.activity_main)
+        setContentView(binding.root)
 
-//        val projection = arrayOf(MediaStore.DownloadColumns._ID)
-//        val selection = null
-//        val selectionArgs = null
-//        val sortOrder = null
-//
-//        applicationContext.contentResolver.query(
-//            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-//            projection,
-//            selection,
-//            selectionArgs,
-//            sortOrder
-//        )?.use { cursor ->
-//            while (cursor.moveToNext()) {
-//                // Use an ID column from the projection to get
-//                // a URI representing the media item itself.
-//
-//            }
-//        }
+        binding.chooseFileButton.setOnClickListener {
+            chooseFile()
+        }
 
-        binding.recyclerView.layoutManager = LinearLayoutManager(this)
-        binding.recyclerView.adapter = FilesAdapter(arrayListOf("Virat", "Rohit", "Rahul"))
+        binding.shareButton.setOnClickListener {
+            val newName = "${binding.newNameField.text}.$selectedFileExtension"
+            shareFile(uriFromFile(file, newName))
+        }
     }
 
-    private fun getPdfList(): ArrayList<String> {
-        val pdfList: ArrayList<String> = ArrayList()
-        val projection = arrayOf(
-            MediaStore.Files.FileColumns.DISPLAY_NAME,
-            MediaStore.Files.FileColumns.DATE_ADDED,
-            MediaStore.Files.FileColumns.DATA,
-            MediaStore.Files.FileColumns.MIME_TYPE
-        )
-        val sortOrder = MediaStore.Files.FileColumns.DATE_ADDED + " DESC"
-        val selection = MediaStore.Files.FileColumns.MIME_TYPE + " = ?"
-        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension("pdf")
-        val selectionArgs = arrayOf(mimeType)
-        val collection: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        } else {
-            MediaStore.Files.getContentUri("external")
+    private fun chooseFile() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "*/*"
+            addCategory(Intent.CATEGORY_OPENABLE)
         }
-        contentResolver.query(collection, projection, null, null, null)
-            .use { cursor ->
-                assert(cursor != null)
-                if (cursor!!.moveToFirst()) {
-                    val columnData = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
-                    val columnName =
-                        cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
-                    do {
-//                        pdfList.add(cursor.getString(columnData))
-                        pdfList.add("cursor.getString(columnData)")
-                        Log.d(TAG, "getPdf: " + cursor.getString(columnData))
-                        //you can get your pdf files
-                    } while (cursor.moveToNext())
-                }
+        chooseFileResult.launch(intent)
+    }
+
+    private val chooseFileResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                val intent = it.data
+                val sourceUri = intent?.data
+                selectedFileName = File(sourceUri?.path!!).name
+                binding.selectedFileNameText.text = selectedFileName
+
+                selectedFileExtension = MimeTypeMap.getSingleton()
+                    .getExtensionFromMimeType(contentResolver.getType(sourceUri)).toString()
+                val fileName = "temp.$selectedFileExtension"
+                file = File(filesDir, fileName)
+
+                copyFile(sourceUri, file)
             }
-        Log.d(TAG, "getPdfList: ${pdfList.size}")
-        return pdfList
+        }
+
+    @SuppressLint("NewApi")
+    private fun copyFile(sourceUri: Uri, targetFile: File) {
+        contentResolver.openInputStream(sourceUri).use {inputStream ->
+            FileOutputStream(targetFile).use {outputStream ->
+                FileUtils.copy(inputStream!!, outputStream)
+            }
+        }
+    }
+
+    private fun shareFile(uri: Uri) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "*/*"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, "Share via..."))
+    }
+
+    private fun uriFromFile(file: File, displayName: String): Uri {
+        return FileProvider.getUriForFile(
+            this, "${BuildConfig.APPLICATION_ID}.provider", file, displayName)
     }
 }
