@@ -2,10 +2,12 @@ package com.example.share
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ContentValues.TAG
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.FileUtils
+import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -33,11 +35,32 @@ class MainActivity : AppCompatActivity() {
             val newName = "${binding.newNameField.text}.$selectedFileExtension"
             shareFile(uriFromFile(file, newName))
         }
+
+        val resultIntent = Intent("com.example.share.ACTION_RETURN_FILE")
+        setResult(Activity.RESULT_CANCELED, null)
+        binding.doneButton.setOnClickListener {
+            val newName = "${binding.newNameField.text}.$selectedFileExtension"
+            Log.d(TAG, "onCreate: name = $newName")
+            respondToFileRequest(uriFromFile(file, newName), resultIntent)
+        }
+    }
+
+    private fun respondToFileRequest(fileUri: Uri, resultIntent: Intent) {
+        Log.d(TAG, "respondToFileRequest: fileUri = $fileUri")
+        resultIntent.apply {
+            setDataAndType(fileUri, contentResolver.getType(fileUri))
+            Log.d(TAG, "respondToFileRequest: type = $type")
+        }
+        resultIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        Log.d(TAG, "respondToFileRequest: resultIntent = $resultIntent")
+        setResult(Activity.RESULT_OK, resultIntent)
+        finish()
     }
 
     private fun chooseFile() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            type = "*/*"
+            type = "application/pdf"
             addCategory(Intent.CATEGORY_OPENABLE)
         }
         chooseFileResult.launch(intent)
@@ -67,11 +90,17 @@ class MainActivity : AppCompatActivity() {
                 FileUtils.copy(inputStream!!, outputStream)
             }
         }
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uriFromFile(targetFile, "demo"), "application/pdf")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(intent)
     }
 
     private fun shareFile(uri: Uri) {
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "*/*"
+            type = "application/pdf"
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
                     or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
