@@ -13,12 +13,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.example.share.databinding.ActivityMainBinding
+import com.itextpdf.text.Element
+import com.itextpdf.text.Font
+import com.itextpdf.text.Phrase
+import com.itextpdf.text.pdf.*
 import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var file: File
+    private lateinit var fileWaterMark: File
     private lateinit var selectedFileName: String
     private lateinit var selectedFileExtension: String
 
@@ -33,7 +38,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.shareButton.setOnClickListener {
             val newName = "${binding.newNameField.text}.$selectedFileExtension"
-            shareFile(uriFromFile(file, newName))
+            shareFile(uriFromFile(fileWaterMark, newName))
         }
 
         val resultIntent = Intent("com.example.share.ACTION_RETURN_FILE")
@@ -42,6 +47,35 @@ class MainActivity : AppCompatActivity() {
             val newName = "${binding.newNameField.text}.$selectedFileExtension"
             Log.d(TAG, "onCreate: name = $newName")
             respondToFileRequest(uriFromFile(file, newName), resultIntent)
+        }
+
+        binding.addWatermarkButton.setOnClickListener {
+            addWaterMark()
+        }
+    }
+
+    private fun addWaterMark() {
+        try {
+            val pdfReader = PdfReader(file.path)
+            val pdfStamper = PdfStamper(pdfReader, FileOutputStream(fileWaterMark))
+            val pdfContentByte: PdfContentByte = pdfStamper.getOverContent(1)
+            val rectanglePageSize = pdfReader.getPageSize(1)
+            val horizontal_mid_position: Float =
+                (rectanglePageSize.left + rectanglePageSize.right) / 2
+            val vertical_mid_position: Float =
+                (rectanglePageSize.top + rectanglePageSize.bottom) / 2
+            val pdfGState = PdfGState()
+            pdfGState.setFillOpacity(0.25f)
+            pdfContentByte.setGState(pdfGState)
+            ColumnText.showTextAligned(
+                pdfContentByte, Element.ALIGN_CENTER,
+                Phrase("Watermark watermark", Font(Font.FontFamily.TIMES_ROMAN, 45f)),
+                horizontal_mid_position, vertical_mid_position, 45f
+            )
+            pdfStamper.close()
+            pdfReader.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -78,6 +112,7 @@ class MainActivity : AppCompatActivity() {
                     .getExtensionFromMimeType(contentResolver.getType(sourceUri)).toString()
                 val fileName = "temp.$selectedFileExtension"
                 file = File(filesDir, fileName)
+                fileWaterMark = File(filesDir, fileName + "_watermark")
 
                 copyFile(sourceUri, file)
             }
