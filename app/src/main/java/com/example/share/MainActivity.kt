@@ -1,97 +1,86 @@
 package com.example.share
 
-import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.ContentValues.TAG
 import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
-import android.os.FileUtils
-import android.util.Log
-import android.webkit.MimeTypeMap
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
+import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import com.example.share.databinding.ActivityMainBinding
-import com.itextpdf.text.Element
-import com.itextpdf.text.Font
-import com.itextpdf.text.Phrase
-import com.itextpdf.text.pdf.*
 import java.io.File
-import java.io.FileOutputStream
+
+const val TEMP_FILE_NAME = "temp.pdf"
+const val TEMP_FILE_WATERMARK_NAME = "temp_watermark.pdf"
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var fileOperations: FileOperations
+    private lateinit var selectedFileCopy: File
+    private lateinit var watermarkFile: File
+    private lateinit var currentFile: File
+    private lateinit var selectedFileUri: Uri
     private lateinit var binding: ActivityMainBinding
-    private lateinit var file: File
-    private lateinit var fileWaterMark: File
-    private lateinit var selectedFileName: String
-    private lateinit var selectedFileExtension: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        selectedFileCopy = File(filesDir, TEMP_FILE_NAME)
+        watermarkFile = File(filesDir, TEMP_FILE_WATERMARK_NAME)
+        currentFile = selectedFileCopy
+
+        fileOperations = FileOperations()
+
+        handleIntent()
+
         binding.chooseFileButton.setOnClickListener {
             chooseFile()
         }
-
-        binding.shareButton.setOnClickListener {
-            val newName = "${binding.newNameField.text}.$selectedFileExtension"
-            shareFile(uriFromFile(fileWaterMark, newName))
-        }
-
-        val resultIntent = Intent("com.example.share.ACTION_RETURN_FILE")
-        setResult(Activity.RESULT_CANCELED, null)
-        binding.doneButton.setOnClickListener {
-            val newName = "${binding.newNameField.text}.$selectedFileExtension"
-            Log.d(TAG, "onCreate: name = $newName")
-            respondToFileRequest(uriFromFile(file, newName), resultIntent)
+        binding.confirmButton.setOnClickListener {
+            val displayName = binding.newNameField.text.toString() + ".pdf"
+            val fileUri = fileOperations.getUriFromFile(this, currentFile, displayName)
+            if (intent.action == Intent.ACTION_GET_CONTENT) {
+                returnFileToIntentRequest(fileUri)
+            } else {
+                shareFile(fileUri)
+            }
         }
 
         binding.addWatermarkButton.setOnClickListener {
-            addWaterMark()
+            val watermarkText = binding.waterMarkTextField.text.toString()
+            fileOperations.addWaterMark(watermarkText, selectedFileCopy, watermarkFile)
+            currentFile = watermarkFile
         }
     }
 
-    private fun addWaterMark() {
-        try {
-            val pdfReader = PdfReader(file.path)
-            val pdfStamper = PdfStamper(pdfReader, FileOutputStream(fileWaterMark))
-            val pdfContentByte: PdfContentByte = pdfStamper.getOverContent(1)
-            val rectanglePageSize = pdfReader.getPageSize(1)
-            val horizontal_mid_position: Float =
-                (rectanglePageSize.left + rectanglePageSize.right) / 2
-            val vertical_mid_position: Float =
-                (rectanglePageSize.top + rectanglePageSize.bottom) / 2
-            val pdfGState = PdfGState()
-            pdfGState.setFillOpacity(0.25f)
-            pdfContentByte.setGState(pdfGState)
-            ColumnText.showTextAligned(
-                pdfContentByte, Element.ALIGN_CENTER,
-                Phrase("Watermark watermark", Font(Font.FontFamily.TIMES_ROMAN, 45f)),
-                horizontal_mid_position, vertical_mid_position, 45f
-            )
-            pdfStamper.close()
-            pdfReader.close()
-        } catch (e: Exception) {
-            e.printStackTrace()
+    /**
+     * Changes the ui accordingly if the user has come from a Intent.ACTION_GET_CONTENT of another
+     * app
+     */
+    private fun handleIntent() {
+        binding.confirmButton.text = if (intent.action == Intent.ACTION_GET_CONTENT) {
+            "Confirm"
+        } else {
+            "Share"
         }
     }
 
-    private fun respondToFileRequest(fileUri: Uri, resultIntent: Intent) {
-        Log.d(TAG, "respondToFileRequest: fileUri = $fileUri")
-        resultIntent.apply {
-            setDataAndType(fileUri, contentResolver.getType(fileUri))
-            Log.d(TAG, "respondToFileRequest: type = $type")
+    /** Handles the result after user chooses a file */
+    private val chooseFileResult = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (it.resultCode == Activity.RESULT_OK) {
+            val intent = it.data
+            selectedFileUri = intent?.data!!
+
+            // copying the selected file
+            fileOperations.copyFile(this, selectedFileUri, selectedFileCopy)
+
+            updateFileNameTextView()
         }
-        resultIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        Log.d(TAG, "respondToFileRequest: resultIntent = $resultIntent")
-        setResult(Activity.RESULT_OK, resultIntent)
-        finish()
     }
 
+    /** send the user to the file chooser of android to select a file */
     private fun chooseFile() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             type = "application/pdf"
@@ -100,51 +89,38 @@ class MainActivity : AppCompatActivity() {
         chooseFileResult.launch(intent)
     }
 
-    private val chooseFileResult =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            if (it.resultCode == Activity.RESULT_OK) {
-                val intent = it.data
-                val sourceUri = intent?.data
-                selectedFileName = File(sourceUri?.path!!).name
-                binding.selectedFileNameText.text = selectedFileName
+    /** Displays the name of the file in fileNameTextView */
+    private fun updateFileNameTextView() {
+        binding.selectedFileNameTextView.text = File(selectedFileUri.path!!).name
+    }
 
-                selectedFileExtension = MimeTypeMap.getSingleton()
-                    .getExtensionFromMimeType(contentResolver.getType(sourceUri)).toString()
-                val fileName = "temp.$selectedFileExtension"
-                file = File(filesDir, fileName)
-                fileWaterMark = File(filesDir, fileName + "_watermark")
-
-                copyFile(sourceUri, file)
-            }
-        }
-
-    @SuppressLint("NewApi")
-    private fun copyFile(sourceUri: Uri, targetFile: File) {
-        contentResolver.openInputStream(sourceUri).use {inputStream ->
-            FileOutputStream(targetFile).use {outputStream ->
-                FileUtils.copy(inputStream!!, outputStream)
-            }
-        }
-
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uriFromFile(targetFile, "demo"), "application/pdf")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    /**
+     * Shares the file
+     * @param fileUri uri of the file which is to be shared
+     */
+    private fun shareFile(fileUri: Uri) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = contentResolver.getType(fileUri)
+            putExtra(Intent.EXTRA_STREAM, fileUri)
+            // giving read and write permissions of the file
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         }
         startActivity(intent)
     }
 
-    private fun shareFile(uri: Uri) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/pdf"
-            putExtra(Intent.EXTRA_STREAM, uri)
+    /**
+     * Return the file to the application which has requested by Intent.ACTION_GET_CONTENT
+     * @param fileUri uri of the file which is to be sent
+     */
+    private fun returnFileToIntentRequest(fileUri: Uri) {
+        val resultIntent = Intent("com.example.share.ACTION_RETURN_FILE").apply {
+            setDataAndType(fileUri, contentResolver.getType(fileUri))
+            // giving read and write permissions of the file
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
                     or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         }
-        startActivity(Intent.createChooser(intent, "Share via..."))
-    }
-
-    private fun uriFromFile(file: File, displayName: String): Uri {
-        return FileProvider.getUriForFile(
-            this, "${BuildConfig.APPLICATION_ID}.provider", file, displayName)
+        setResult(Activity.RESULT_OK, resultIntent)
+        finish()
     }
 }
