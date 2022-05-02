@@ -38,52 +38,88 @@ class MainActivity : AppCompatActivity() {
 
         handleIntent()
 
-        binding.btnConfirm.setOnClickListener {
-            val displayName = binding.etNewName.text.toString() + ".pdf"
-            val fileUri = currentFile.uri(this, displayName)
-            if (intent.action == Intent.ACTION_GET_CONTENT) {
-                returnFileToIntentRequest(fileUri)
-            } else {
-                shareFile(fileUri)
-            }
-        }
+        binding.btnConfirm.setOnClickListener { confirm() }
 
-        binding.btnAddWatermark.setOnClickListener {
-            showDialog()
-        }
+        binding.btnAddWatermark.setOnClickListener { addOrRemoveWatermark() }
 
-        binding.btnChooseFile.setOnClickListener {
-            chooseFile()
-        }
+        binding.btnChooseFile.setOnClickListener { chooseFile() }
 
-        binding.btnCancel.setOnClickListener {
-            cancel()
+        binding.btnCancel.setOnClickListener { cancel() }
+    }
+
+    /** sends the file with the name changed */
+    private fun confirm() {
+        val displayName = binding.etNewName.text.toString().trim() + ".pdf"
+        val fileUri = currentFile.uri(this, displayName)
+        if (intent.action == Intent.ACTION_GET_CONTENT) {
+            returnFileToIntentRequest(fileUri)
+        } else {
+            shareFile(fileUri)
         }
     }
 
+    /** calls the functions to add or remove watermark accordingly */
+    private fun addOrRemoveWatermark() {
+        if (currentFile == selectedFileCopy) {
+            showDialog()
+        } else {
+            removeWatermark()
+        }
+    }
+
+    /** updates the text displayed on the watermark button */
+    private fun updateWatermarkButtonText() {
+        binding.btnAddWatermark.text = if (currentFile == selectedFileCopy) {
+            getString(R.string.add_watermark)
+        } else {
+            getString(R.string.remove_watermark)
+        }
+    }
+
+    /**
+     * Adds watermark and make the watermarked file as the current file
+     * @param watermarkText the text to be used as watermark
+     */
+    private fun addWatermark(watermarkText: String) {
+        selectedFileCopy.addWatermark(watermarkText, watermarkFile)
+        currentFile = watermarkFile
+        updateWatermarkButtonText()
+        watermarkFile.loadIntoPDFView(binding.pdfView)
+    }
+
+    /** changes the non watermarked file as the current file */
+    private fun removeWatermark() {
+        currentFile = selectedFileCopy
+        selectedFileCopy.loadIntoPDFView(binding.pdfView)
+        updateWatermarkButtonText()
+    }
+
+    /**
+     * Shows a dialog to let user enter the watermark text and adds the watermark to the file
+     * and then loads it into pdfView
+     */
     private fun showDialog() {
         // creating a edittext and focusing on it
         val etWatermarkText = EditText(this)
         etWatermarkText.requestFocus()
 
-        val alertDialog = AlertDialog.Builder(this).apply {
+        // showing a dialog to let user enter watermark text
+        AlertDialog.Builder(this).apply {
             title = "Add watermark"
             setMessage("Enter watermark text")
             setView(etWatermarkText)
             setPositiveButton("Add") { _, _ ->
                 val watermarkText = etWatermarkText.text.toString().trim()
 
-                // watermarking the file and loading it int the PDFView
+                // watermarking the file and loading it into the PDFView
                 if (watermarkText.isNotBlank()) {
-                    selectedFileCopy.addWatermark(watermarkText, watermarkFile)
-                    currentFile = watermarkFile
-                    watermarkFile.loadIntoPDFView(binding.pdfView)
+                    addWatermark(watermarkText)
                 }
             }
             setNegativeButton(getString(R.string.cancel), null)
             create()
+            show()
         }
-        alertDialog.show()
     }
 
     /**
@@ -108,7 +144,7 @@ class MainActivity : AppCompatActivity() {
             selectedFileUri.copyTo(this, selectedFileCopy)
 
             updateFileNameTextView()
-            selectedFileUri.loadIntoPDFView(binding.pdfView)
+            selectedFileCopy.loadIntoPDFView(binding.pdfView)
         }
     }
 

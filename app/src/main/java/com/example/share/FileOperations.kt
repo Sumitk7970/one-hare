@@ -1,10 +1,8 @@
 package com.example.share
 
-import android.content.ContentValues.TAG
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.util.Log
 import androidx.core.content.FileProvider
 import com.github.barteksc.pdfviewer.PDFView
 import com.itextpdf.text.Element
@@ -16,13 +14,6 @@ import com.itextpdf.text.pdf.PdfReader
 import com.itextpdf.text.pdf.PdfStamper
 import java.io.File
 import java.io.FileOutputStream
-
-/** load the pdf into pdfview */
-fun Uri.loadIntoPDFView(pdfView: PDFView) {
-    pdfView.fromUri(this)
-        .enableSwipe(true)
-        .load()
-}
 
 /** load the pdf into pdfview */
 fun File.loadIntoPDFView(pdfView: PDFView) {
@@ -38,7 +29,6 @@ fun Uri.fileName(context: Context): String? {
         .use { cursor ->
             if (cursor != null && cursor.moveToFirst()) {
                 result = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
-                Log.d(TAG, "fileName: $result")
             }
         }
     return result
