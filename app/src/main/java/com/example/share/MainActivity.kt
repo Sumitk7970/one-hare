@@ -1,11 +1,14 @@
 package com.example.share
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.EditText
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import com.example.share.databinding.ActivityMainBinding
 import java.io.File
 
@@ -13,7 +16,6 @@ const val TEMP_FILE_NAME = "temp.pdf"
 const val TEMP_FILE_WATERMARK_NAME = "temp_watermark.pdf"
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var fileOperations: FileOperations
     private lateinit var selectedFileCopy: File
     private lateinit var watermarkFile: File
     private lateinit var currentFile: File
@@ -22,6 +24,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // redirecting the user to select a file
+        Toast.makeText(this, "Select a file", Toast.LENGTH_SHORT).show()
+        chooseFile()
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -29,16 +36,11 @@ class MainActivity : AppCompatActivity() {
         watermarkFile = File(filesDir, TEMP_FILE_WATERMARK_NAME)
         currentFile = selectedFileCopy
 
-        fileOperations = FileOperations()
-
         handleIntent()
 
-        binding.chooseFileButton.setOnClickListener {
-            chooseFile()
-        }
-        binding.confirmButton.setOnClickListener {
-            val displayName = binding.newNameField.text.toString() + ".pdf"
-            val fileUri = fileOperations.getUriFromFile(this, currentFile, displayName)
+        binding.btnConfirm.setOnClickListener {
+            val displayName = binding.etNewName.text.toString() + ".pdf"
+            val fileUri = currentFile.uri(this, displayName)
             if (intent.action == Intent.ACTION_GET_CONTENT) {
                 returnFileToIntentRequest(fileUri)
             } else {
@@ -46,11 +48,42 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.addWatermarkButton.setOnClickListener {
-            val watermarkText = binding.waterMarkTextField.text.toString()
-            fileOperations.addWaterMark(watermarkText, selectedFileCopy, watermarkFile)
-            currentFile = watermarkFile
+        binding.btnAddWatermark.setOnClickListener {
+            showDialog()
         }
+
+        binding.btnChooseFile.setOnClickListener {
+            chooseFile()
+        }
+
+        binding.btnCancel.setOnClickListener {
+            cancel()
+        }
+    }
+
+    private fun showDialog() {
+        // creating a edittext and focusing on it
+        val etWatermarkText = EditText(this)
+        etWatermarkText.requestFocus()
+
+        val alertDialog = AlertDialog.Builder(this).apply {
+            title = "Add watermark"
+            setMessage("Enter watermark text")
+            setView(etWatermarkText)
+            setPositiveButton("Add") { _, _ ->
+                val watermarkText = etWatermarkText.text.toString().trim()
+
+                // watermarking the file and loading it int the PDFView
+                if (watermarkText.isNotBlank()) {
+                    selectedFileCopy.addWatermark(watermarkText, watermarkFile)
+                    currentFile = watermarkFile
+                    watermarkFile.loadIntoPDFView(binding.pdfView)
+                }
+            }
+            setNegativeButton(getString(R.string.cancel), null)
+            create()
+        }
+        alertDialog.show()
     }
 
     /**
@@ -58,10 +91,8 @@ class MainActivity : AppCompatActivity() {
      * app
      */
     private fun handleIntent() {
-        binding.confirmButton.text = if (intent.action == Intent.ACTION_GET_CONTENT) {
-            "Confirm"
-        } else {
-            "Share"
+        if (intent.action == Intent.ACTION_GET_CONTENT) {
+            binding.btnConfirm.text = getString(R.string.confirm)
         }
     }
 
@@ -74,9 +105,10 @@ class MainActivity : AppCompatActivity() {
             selectedFileUri = intent?.data!!
 
             // copying the selected file
-            fileOperations.copyFile(this, selectedFileUri, selectedFileCopy)
+            selectedFileUri.copyTo(this, selectedFileCopy)
 
             updateFileNameTextView()
+            selectedFileUri.loadIntoPDFView(binding.pdfView)
         }
     }
 
@@ -91,7 +123,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Displays the name of the file in fileNameTextView */
     private fun updateFileNameTextView() {
-        binding.selectedFileNameTextView.text = File(selectedFileUri.path!!).name
+        binding.tvFileName.text = selectedFileUri.fileName(this)
     }
 
     /**
@@ -121,6 +153,10 @@ class MainActivity : AppCompatActivity() {
                     or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         }
         setResult(Activity.RESULT_OK, resultIntent)
+        finish()
+    }
+
+    private fun cancel() {
         finish()
     }
 }

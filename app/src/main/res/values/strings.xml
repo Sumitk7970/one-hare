@@ -1,3 +1,11 @@
 <resources>
-    <string name="app_name">Share</string>
+    <string name="app_name">1 Share</string>
+
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="choose">Choose</string>
+    <string name="add_watermark">Add watermark</string>
+    <string name="share">Share</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+    <string name="enter_new_name">Enter new name</string>
 </resources>

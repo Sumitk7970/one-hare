@@ -7,102 +7,94 @@
     tools:context=".MainActivity">
 
     <TextView
-        android:id="@+id/selectedFileNameTextView"
+        android:id="@+id/tv_fileName"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="8dp"
+        android:gravity="center"
+        android:padding="3dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/btn_chooseFile"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/btn_chooseFile"
+        app:layout_constraintTop_toTopOf="@id/btn_chooseFile" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_chooseFile"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="No file selected"
+        android:layout_marginEnd="8dp"
+        android:text="@string/choose"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/tv_fileName"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <com.github.barteksc.pdfviewer.PDFView
+        android:id="@+id/pdfView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="#EFEDED"
+        android:padding="2dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/btn_addWatermark"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btn_chooseFile" />
+
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/chooseFileButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Choose file"
-        app:layout_constraintEnd_toEndOf="@+id/selectedFileNameTextView"
-        app:layout_constraintStart_toStartOf="@+id/selectedFileNameTextView"
-        app:layout_constraintTop_toBottomOf="@+id/selectedFileNameTextView" />
-
-    <TextView
-        android:id="@+id/previewText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Preview"
-        app:layout_constraintEnd_toEndOf="@+id/chooseFileButton"
-        app:layout_constraintStart_toStartOf="@+id/chooseFileButton"
-        app:layout_constraintTop_toBottomOf="@+id/chooseFileButton" />
-
-    <ImageView
-        android:id="@+id/previewImageView"
-        android:layout_width="350dp"
-        android:layout_height="400dp"
-        android:layout_marginTop="8dp"
-        app:layout_constraintEnd_toEndOf="@+id/previewText"
-        app:layout_constraintStart_toStartOf="@+id/previewText"
-        app:layout_constraintTop_toBottomOf="@+id/previewText"
-        tools:srcCompat="@tools:sample/avatars" />
-
-    <EditText
-        android:id="@+id/waterMarkTextField"
+        android:id="@+id/btn_addWatermark"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="4dp"
-        android:ems="10"
-        android:hint="Watermark text"
-        android:inputType="textPersonName"
-        app:layout_constraintEnd_toStartOf="@+id/addWatermarkButton"
-        app:layout_constraintStart_toStartOf="@+id/previewImageView"
-        app:layout_constraintTop_toBottomOf="@+id/previewImageView" />
+        android:layout_margin="8dp"
+        android:text="@string/add_watermark"
+        app:layout_constraintBottom_toTopOf="@id/et_newName"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/addWatermarkButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Add"
-        app:layout_constraintBottom_toBottomOf="@+id/waterMarkTextField"
-        app:layout_constraintEnd_toEndOf="@+id/previewImageView"
-        app:layout_constraintTop_toTopOf="@+id/waterMarkTextField" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/confirmButton"
+        android:id="@+id/btn_confirm"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
         android:layout_marginBottom="16dp"
-        android:text="Share"
+        android:text="@string/share"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@+id/addWatermarkButton"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/cancelButton" />
+        app:layout_constraintStart_toEndOf="@+id/btn_cancel" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/cancelButton"
+        android:id="@+id/btn_cancel"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="16dp"
-        android:text="Cancel"
+        android:text="@string/cancel"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/confirmButton"
+        app:layout_constraintEnd_toStartOf="@+id/btn_confirm"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="@+id/waterMarkTextField" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <EditText
-        android:id="@+id/newNameField"
+        android:id="@+id/et_newName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_margin="8dp"
         android:layout_marginTop="6dp"
         android:ems="10"
-        android:hint="Enter new name"
+        android:hint="@string/enter_new_name"
         android:inputType="textPersonName"
-        app:layout_constraintEnd_toEndOf="@+id/addWatermarkButton"
-        app:layout_constraintStart_toStartOf="@+id/waterMarkTextField"
-        app:layout_constraintTop_toBottomOf="@+id/waterMarkTextField" />
+        app:layout_constraintBottom_toTopOf="@id/btn_confirm"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:importantForAutofill="no" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
