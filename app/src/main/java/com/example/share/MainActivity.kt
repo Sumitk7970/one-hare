@@ -105,7 +105,6 @@ class MainActivity : AppCompatActivity() {
 
         // showing a dialog to let user enter watermark text
         AlertDialog.Builder(this).apply {
-            title = "Add watermark"
             setMessage("Enter watermark text")
             setView(etWatermarkText)
             setPositiveButton("Add") { _, _ ->
